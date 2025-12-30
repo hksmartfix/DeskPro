@@ -15,7 +15,7 @@ class AppConstants {
   // Option 3: Production (deploy to Railway/Heroku/Render):
   //   static const String signalingServerUrl = 'https://your-app.railway.app';
   //
-  static const String signalingServerUrl = 'http://10.0.2.2:3000'; // Using local for now
+  static const String signalingServerUrl = 'https://deskpro-production.up.railway.app'; // Using local for now
   static const int signalingPort = 3000;
 
   // WebRTC Configuration

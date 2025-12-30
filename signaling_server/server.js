@@ -75,6 +75,12 @@ io.on('connection', (socket) => {
       return;
     }
 
+    // Check if this socket is already in the session
+    if (session.clients.includes(socket.id)) {
+      console.log(`Client ${socket.id} already in session: ${sessionId}`);
+      return; // Already joined, ignore duplicate
+    }
+
     // Verify password if required
     if (session.password && session.password !== password) {
       socket.emit('session-error', { message: 'Invalid password' });
@@ -89,14 +95,14 @@ io.on('connection', (socket) => {
 
     console.log(`Client ${socket.id} joined session: ${sessionId}`);
 
-    // Notify host that a client joined
+    // Notify client of successful join first
+    socket.emit('session-joined', { sessionId });
+
+    // Then notify host that a client joined (host should create offer)
     socket.to(session.hostSocketId).emit('peer-joined', {
       peerId: socket.id,
       sessionId: sessionId
     });
-
-    // Notify client of successful join
-    socket.emit('session-joined', { sessionId });
   });
 
   // Forward WebRTC offer

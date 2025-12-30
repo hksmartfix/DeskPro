@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/remote_desktop_provider.dart';
+import '../../data/models/session_model.dart';
 import '../../core/theme/app_theme.dart';
 import 'control_screen.dart';
 
@@ -31,9 +32,20 @@ class _ClientScreenState extends State<ClientScreen> {
       return;
     }
 
+    // Prevent duplicate connection attempts
+    if (_isConnecting) {
+      return;
+    }
+
     setState(() => _isConnecting = true);
 
     final provider = context.read<RemoteDesktopProvider>();
+
+    // Check if already connected or connecting
+    if (provider.isConnected || provider.currentSession?.status == SessionStatus.connecting) {
+      setState(() => _isConnecting = false);
+      return;
+    }
 
     await provider.connectToSession(
       _sessionIdController.text,

@@ -64,6 +64,10 @@ class SignalingService {
       _messageController.add({'type': 'error', 'data': data});
     });
 
+    _socket!.on('session-joined', (data) {
+      _messageController.add({'type': 'session-joined', 'data': data});
+    });
+
     _socket!.on('peer-joined', (data) {
       _messageController.add({'type': 'peer-joined', 'data': data});
     });

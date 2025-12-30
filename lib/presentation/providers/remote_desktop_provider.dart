@@ -21,6 +21,7 @@ class RemoteDesktopProvider extends ChangeNotifier {
   String? _errorMessage;
   bool _isAudioEnabled = true;
   bool _isVideoEnabled = true;
+  bool _isJoiningSession = false; // Prevent duplicate joins
 
   SessionModel? get currentSession => _currentSession;
   bool get isInitialized => _isInitialized;
@@ -125,12 +126,19 @@ class RemoteDesktopProvider extends ChangeNotifier {
 
   Future<void> connectToSession(String sessionId, {String? password}) async {
     try {
+      // Prevent duplicate join attempts
+      if (_isJoiningSession) {
+        debugPrint('Already joining session, ignoring duplicate request');
+        return;
+      }
+
       if (!Utils.isValidSessionId(sessionId)) {
         _errorMessage = 'Invalid session ID format';
         notifyListeners();
         return;
       }
 
+      _isJoiningSession = true;
       final cleanSessionId = Utils.unformatSessionId(sessionId);
       final hashedPassword = password != null ? Utils.hashPassword(password) : null;
 
@@ -142,6 +150,8 @@ class RemoteDesktopProvider extends ChangeNotifier {
         status: SessionStatus.connecting,
       );
       notifyListeners();
+
+      debugPrint('Joining session: $cleanSessionId');
 
       // Join session on signaling server
       await _signalingService.joinSession(cleanSessionId, hashedPassword);
@@ -155,6 +165,7 @@ class RemoteDesktopProvider extends ChangeNotifier {
     } catch (e) {
       _errorMessage = 'Failed to connect: $e';
       _currentSession = _currentSession?.copyWith(status: SessionStatus.error);
+      _isJoiningSession = false;
       notifyListeners();
     }
   }
@@ -162,25 +173,46 @@ class RemoteDesktopProvider extends ChangeNotifier {
   Future<void> _handleSignalingMessage(Map<String, dynamic> message) async {
     try {
       final type = message['type'] as String;
+      debugPrint('Handling signaling message: $type');
 
       switch (type) {
         case 'offer':
+          // Only process offer if we're a client
+          if (_currentSession?.type != SessionType.client) {
+            debugPrint('Ignoring offer - we are not a client');
+            return;
+          }
+
           final offerMap = message['data']['offer'] as Map<String, dynamic>;
           final offer = RTCSessionDescription(
             offerMap['sdp'] as String,
             offerMap['type'] as String,
           );
+
+          debugPrint('Received offer, setting remote description');
           await _webrtcService.setRemoteDescription(offer);
+
+          debugPrint('Creating answer');
           final answer = await _webrtcService.createAnswer();
+
+          debugPrint('Sending answer to signaling server');
           _signalingService.sendAnswer(_currentSession!.sessionId, answer.toMap());
           break;
 
         case 'answer':
+          // Only process answer if we're a host
+          if (_currentSession?.type != SessionType.host) {
+            debugPrint('Ignoring answer - we are not a host');
+            return;
+          }
+
           final answerMap = message['data']['answer'] as Map<String, dynamic>;
           final answer = RTCSessionDescription(
             answerMap['sdp'] as String,
             answerMap['type'] as String,
           );
+
+          debugPrint('Received answer, setting remote description');
           await _webrtcService.setRemoteDescription(answer);
           break;
 
@@ -191,16 +223,36 @@ class RemoteDesktopProvider extends ChangeNotifier {
             candidateMap['sdpMid'] as String,
             candidateMap['sdpMLineIndex'] as int,
           );
+
+          debugPrint('Adding ICE candidate');
           await _webrtcService.addIceCandidate(candidate);
           break;
 
         case 'peer-joined':
+          debugPrint('Peer joined event received');
           if (_currentSession?.type == SessionType.host) {
             // Create offer for the new peer
+            debugPrint('We are host, creating offer');
             final offer = await _webrtcService.createOffer();
             _signalingService.sendOffer(_currentSession!.sessionId, offer.toMap());
           }
           _currentSession = _currentSession?.copyWith(status: SessionStatus.connected);
+          notifyListeners();
+          break;
+
+        case 'session-joined':
+          debugPrint('Successfully joined session');
+          _isJoiningSession = false; // Reset flag
+          // Wait for offer from host
+          _currentSession = _currentSession?.copyWith(status: SessionStatus.connecting);
+          notifyListeners();
+          break;
+
+        case 'error':
+          debugPrint('Session error: ${message['data']}');
+          _errorMessage = message['data']['message'] ?? 'Unknown error';
+          _isJoiningSession = false; // Reset flag on error
+          _currentSession = _currentSession?.copyWith(status: SessionStatus.error);
           notifyListeners();
           break;
 

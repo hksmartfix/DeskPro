@@ -79,23 +79,52 @@ class WebRTCService {
     required int frameRate,
   }) async {
     try {
+      // For desktop (Windows/Linux), use getUserMedia with screen capture
+      // For web, use getDisplayMedia
       final mediaConstraints = {
-        'audio': true,
+        'audio': false, // Desktop screen capture doesn't support audio via this method
         'video': {
+          'deviceId': 'screen:0:0', // Primary screen on desktop
           'mandatory': {
             'minWidth': width.toString(),
             'minHeight': height.toString(),
+            'maxWidth': width.toString(),
+            'maxHeight': height.toString(),
             'minFrameRate': frameRate.toString(),
+            'maxFrameRate': frameRate.toString(),
           },
-          'facingMode': 'user',
-          'optional': [],
         }
       };
 
-      _localStream = await navigator.mediaDevices.getDisplayMedia(mediaConstraints);
+      debugPrint('Creating display stream with constraints: $mediaConstraints');
 
+      // Try desktop screen capture first
+      try {
+        _localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+        debugPrint('Screen capture successful via getUserMedia');
+      } catch (e) {
+        debugPrint('getUserMedia failed, trying getDisplayMedia: $e');
+        // Fallback to getDisplayMedia for web/mobile
+        final displayConstraints = {
+          'audio': true,
+          'video': {
+            'width': {'ideal': width},
+            'height': {'ideal': height},
+            'frameRate': {'ideal': frameRate},
+          }
+        };
+        _localStream = await navigator.mediaDevices.getDisplayMedia(displayConstraints);
+        debugPrint('Screen capture successful via getDisplayMedia');
+      }
+
+      if (_localStream == null) {
+        throw Exception('Failed to create media stream');
+      }
+
+      debugPrint('Adding ${_localStream!.getTracks().length} tracks to peer connection');
       for (var track in _localStream!.getTracks()) {
-        _peerConnection!.addTrack(track, _localStream!);
+        await _peerConnection!.addTrack(track, _localStream!);
+        debugPrint('Added track: ${track.kind}');
       }
     } catch (e) {
       debugPrint('Error creating display stream: $e');
@@ -119,6 +148,14 @@ class WebRTCService {
 
   Future<RTCSessionDescription> createAnswer() async {
     try {
+      // Check if we're in the right state to create an answer
+      final signalingState = await _peerConnection!.getSignalingState();
+      debugPrint('Creating answer in state: $signalingState');
+
+      if (signalingState == RTCSignalingState.RTCSignalingStateStable) {
+        throw Exception('Cannot create answer in stable state. Need to receive offer first.');
+      }
+
       final answer = await _peerConnection!.createAnswer({
         'offerToReceiveAudio': true,
         'offerToReceiveVideo': true,
@@ -132,7 +169,22 @@ class WebRTCService {
   }
 
   Future<void> setRemoteDescription(RTCSessionDescription description) async {
-    await _peerConnection!.setRemoteDescription(description);
+    try {
+      final signalingState = await _peerConnection!.getSignalingState();
+      debugPrint('Setting remote description (${description.type}) in state: $signalingState');
+
+      // Only set remote description if not already set
+      if (signalingState == RTCSignalingState.RTCSignalingStateStable &&
+          description.type == 'answer') {
+        debugPrint('Already in stable state, ignoring duplicate answer');
+        return;
+      }
+
+      await _peerConnection!.setRemoteDescription(description);
+    } catch (e) {
+      debugPrint('Error setting remote description: $e');
+      rethrow;
+    }
   }
 
   Future<void> addIceCandidate(RTCIceCandidate candidate) async {
