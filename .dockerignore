@@ -1,0 +1,40 @@
+# Add .dockerignore to exclude unnecessary files from Docker build
+node_modules
+npm-debug.log
+.git
+.gitignore
+README.md
+.DS_Store
+*.md
+.vscode
+.idea
+
+# Exclude Flutter-related files (we only need signaling server)
+lib/
+android/
+ios/
+windows/
+web/
+test/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+pubspec.yaml
+pubspec.lock
+analysis_options.yaml
+
+# Exclude documentation
+SETUP.md
+FEATURES.md
+CONTRIBUTING.md
+LICENSE
+screenshots/
+docs/
+
+# Exclude build artifacts
+build/
+*.apk
+*.aab
+*.ipa
+
