@@ -47,13 +47,17 @@ class WebRTCService {
     _peerConnection = await createPeerConnection(config, constraints);
 
     _peerConnection!.onIceCandidate = (candidate) {
-      _iceCandidateController.add(candidate);
+      if (!_iceCandidateController.isClosed) {
+        _iceCandidateController.add(candidate);
+      }
     };
 
     _peerConnection!.onTrack = (event) {
       if (event.streams.isNotEmpty) {
         _remoteStream = event.streams[0];
-        _remoteStreamController.add(_remoteStream);
+        if (!_remoteStreamController.isClosed) {
+          _remoteStreamController.add(_remoteStream);
+        }
       }
     };
 
@@ -206,7 +210,9 @@ class WebRTCService {
       try {
         final data = message.text;
         // Parse message and emit
-        _dataChannelController.add({'type': 'message', 'data': data});
+        if (!_dataChannelController.isClosed) {
+          _dataChannelController.add({'type': 'message', 'data': data});
+        }
       } catch (e) {
         debugPrint('Error handling data channel message: $e');
       }
@@ -279,7 +285,9 @@ class WebRTCService {
         connectionDuration: duration,
       );
 
-      _statsController.add(connectionStats);
+      if (!_statsController.isClosed) {
+        _statsController.add(connectionStats);
+      }
     } catch (e) {
       debugPrint('Error updating stats: $e');
     }
@@ -314,10 +322,12 @@ class WebRTCService {
     _dataChannel = null;
     _peerConnection = null;
 
-    await _remoteStreamController.close();
-    await _iceCandidateController.close();
-    await _dataChannelController.close();
-    await _statsController.close();
+    // DON'T close broadcast stream controllers in singleton service
+    // They need to persist across reconnections
+    // await _remoteStreamController.close();
+    // await _iceCandidateController.close();
+    // await _dataChannelController.close();
+    // await _statsController.close();
   }
 }
 
