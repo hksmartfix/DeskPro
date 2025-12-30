@@ -1,0 +1,143 @@
+# .gitignore for DeskPro Remote Desktop App
+
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# VS Code
+.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+/build/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+/android/.gradle
+/android/captures/
+/android/local.properties
+/android/app/google-services.json
+
+# Node.js related (signaling server)
+signaling_server/node_modules/
+signaling_server/.env
+signaling_server/npm-debug.log*
+signaling_server/yarn-debug.log*
+signaling_server/yarn-error.log*
+signaling_server/package-lock.json
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# IDE
+*.swp
+*.swo
+*~
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# Build outputs
+*.apk
+*.aab
+*.ipa
+*.exe
+*.dmg
+*.zip
+*.tar.gz
+
+# Generated files
+*.g.dart
+*.freezed.dart
+*.mocks.dart
+
+# Coverage
+coverage/
+*.lcov
+
+# Documentation files (keep in repo but ignore build artifacts)
+doc/api/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Flutter web build
+/web/build/
+
+# Windows build
+/windows/flutter/ephemeral/
+
+# Cloudflare credentials (if using Cloudflare Tunnel)
+.cloudflared/
+
